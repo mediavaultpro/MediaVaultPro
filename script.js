@@ -53,7 +53,7 @@ faqItems.forEach(item => {
     });
 });
 
-// Just replace the analyzeVideo function
+// UPDATED: Video Analyzer - Works with GitHub Pages
 async function analyzeVideo() {
     const url = document.getElementById('singleUrl').value;
     
@@ -64,28 +64,41 @@ async function analyzeVideo() {
     
     showProgress('Analyzing video...');
     
-    // Extract video ID from YouTube URL
-    const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
+    // Multiple patterns to extract video ID
+    let videoId = null;
     
-    if (videoId) {
+    // Try different URL patterns
+    if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('v=')[1]?.split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0];
+    } else if (url.includes('youtube.com/embed/')) {
+        videoId = url.split('embed/')[1]?.split('?')[0];
+    }
+    
+    if (videoId && videoId.length === 11) {
         setTimeout(() => {
             hideProgress();
             document.getElementById('videoInfo').style.display = 'block';
-            // This will show real YouTube thumbnail
+            
+            // Show real YouTube thumbnail
             document.getElementById('videoThumbnail').src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-            document.getElementById('videoTitle').textContent = 'Video Ready for Download';
-            document.getElementById('videoDuration').textContent = 'Click download to proceed';
+            document.getElementById('videoTitle').textContent = 'Video Ready - ID: ' + videoId;
+            document.getElementById('videoDuration').textContent = 'Select quality and format below';
+            
+            // Store video ID for download
+            window.currentVideoId = videoId;
+            
             showNotification('Video analyzed successfully!', 'success');
         }, 1500);
     } else {
         hideProgress();
-        showNotification('Please enter a valid YouTube URL', 'error');
+        showNotification('Invalid YouTube URL. Please check and try again.', 'error');
     }
 }
 
-// Just replace the downloadVideo function  
+// UPDATED: Download Video - Works with GitHub Pages
 function downloadVideo() {
-    const url = document.getElementById('singleUrl').value;
     const quality = document.querySelector('input[name="quality"]:checked')?.value;
     const format = document.querySelector('.format-btn.active')?.dataset.format;
     
@@ -94,39 +107,67 @@ function downloadVideo() {
         return;
     }
     
-    // Extract video ID
-    const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
-    
-    if (videoId) {
-        showNotification('Opening download service...', 'info');
-        
-        // Option 1: Use a free service (choose one)
-        // window.open(`https://www.y2mate.com/youtube/${videoId}`, '_blank');
-        // OR
-        window.open(`https://en.savefrom.net/#url=https://youtube.com/watch?v=${videoId}`, '_blank');
-        
-        // Show a message
-        setTimeout(() => {
-            showNotification('Download page opened in new tab!', 'success');
-        }, 1000);
-    } else {
-        showNotification('Invalid video URL', 'error');
+    if (!window.currentVideoId) {
+        showNotification('Please analyze a video first', 'error');
+        return;
     }
-}    
-    showProgress('Preparing download...');
     
-    // Simulate download progress
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += 10;
-        updateProgress(progress);
-        
-        if (progress >= 100) {
-            clearInterval(interval);
-            hideProgress();
-            showNotification('Download completed!', 'success');
-        }
-    }, 500);
+    showNotification('Redirecting to download service...', 'info');
+    
+    // Create a modal with multiple download options
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: #1a1a2e; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%;">
+            <h2 style="color: #667eea; margin-bottom: 20px;">Download Options</h2>
+            <p style="color: #b4b4b4; margin-bottom: 20px;">Choose a download method:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button onclick="window.open('https://www.y2mate.com/youtube/${window.currentVideoId}', '_blank'); this.parentElement.parentElement.parentElement.remove();" 
+                        style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 16px;">
+                    📥 Download with Y2Mate
+                </button>
+                
+                <button onclick="window.open('https://en.savefrom.net/1-youtube-video-downloader-1/?url=https://youtube.com/watch?v=${window.currentVideoId}', '_blank'); this.parentElement.parentElement.parentElement.remove();" 
+                        style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 16px;">
+                    📥 Download with SaveFrom
+                </button>
+                
+                <button onclick="window.open('https://www.yt1s.com/youtube-to-mp4?q=${window.currentVideoId}', '_blank'); this.parentElement.parentElement.parentElement.remove();" 
+                        style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 16px;">
+                    📥 Download with YT1s
+                </button>
+                
+                <button onclick="navigator.clipboard.writeText('https://youtube.com/watch?v=${window.currentVideoId}'); alert('Video URL copied! You can use any YouTube downloader app.'); this.parentElement.parentElement.parentElement.remove();" 
+                        style="padding: 15px; background: #4ade80; border: none; border-radius: 10px; color: black; cursor: pointer; font-size: 16px;">
+                    📋 Copy Video URL
+                </button>
+                
+                <button onclick="this.parentElement.parentElement.parentElement.remove();" 
+                        style="padding: 15px; background: #f87171; border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 16px;">
+                    ❌ Cancel
+                </button>
+            </div>
+            
+            <p style="color: #fbbf24; margin-top: 20px; font-size: 14px;">
+                ⚠️ Note: You'll be redirected to a third-party service. Please respect copyright laws.
+            </p>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
 }
 
 // Batch Analyzer
@@ -182,21 +223,73 @@ function clearBatch() {
     document.getElementById('batchSettings').style.display = 'none';
 }
 
-// Download Batch
+// UPDATED: Batch Download - Works with GitHub Pages
 function downloadBatch() {
-    showProgress('Downloading batch...');
+    const urls = document.getElementById('batchUrls').value.trim().split('\n');
+    const validUrls = urls.filter(url => url.trim());
     
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += 5;
-        updateProgress(progress);
-        
-        if (progress >= 100) {
-            clearInterval(interval);
-            hideProgress();
-            showNotification('Batch download completed!', 'success');
+    if (validUrls.length === 0) {
+        showNotification('Please add URLs first', 'error');
+        return;
+    }
+    
+    let videoIds = [];
+    validUrls.forEach(url => {
+        let videoId = null;
+        if (url.includes('youtube.com/watch?v=')) {
+            videoId = url.split('v=')[1]?.split('&')[0];
+        } else if (url.includes('youtu.be/')) {
+            videoId = url.split('youtu.be/')[1]?.split('?')[0];
         }
-    }, 500);
+        if (videoId && videoId.length === 11) {
+            videoIds.push(videoId);
+        }
+    });
+    
+    if (videoIds.length === 0) {
+        showNotification('No valid YouTube URLs found', 'error');
+        return;
+    }
+    
+    // Create download list modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+    `;
+    
+    const videoLinks = videoIds.map((id, index) => `
+        <div style="margin: 10px 0;">
+            <a href="https://www.y2mate.com/youtube/${id}" target="_blank" 
+               style="color: #667eea; text-decoration: none;">
+                📥 Video ${index + 1}: Open downloader
+            </a>
+        </div>
+    `).join('');
+    
+    modal.innerHTML = `
+        <div style="background: #1a1a2e; padding: 30px; border-radius: 15px; max-width: 600px; width: 90%; max-height: 80vh; overflow: auto;">
+            <h2 style="color: #667eea; margin-bottom: 20px;">Batch Download - ${videoIds.length} Videos</h2>
+            <p style="color: #b4b4b4; margin-bottom: 20px;">Click each link to download:</p>
+            ${videoLinks}
+            <button onclick="this.parentElement.parentElement.remove();" 
+                    style="margin-top: 20px; padding: 15px; width: 100%; background: #f87171; border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 16px;">
+                Close
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    showNotification(`${videoIds.length} videos ready for download`, 'success');
 }
 
 // Audio Options
@@ -224,13 +317,26 @@ function analyzeAudio() {
         return;
     }
     
-    showProgress('Extracting audio information...');
+    // Extract video ID for audio
+    let videoId = null;
+    if (url.includes('youtube.com/watch?v=')) {
+        videoId = url.split('v=')[1]?.split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0];
+    }
     
-    setTimeout(() => {
-        hideProgress();
-        document.getElementById('audioSettings').style.display = 'block';
-        showNotification('Audio ready for extraction', 'success');
-    }, 1500);
+    if (videoId && videoId.length === 11) {
+        showProgress('Extracting audio information...');
+        window.audioVideoId = videoId;
+        
+        setTimeout(() => {
+            hideProgress();
+            document.getElementById('audioSettings').style.display = 'block';
+            showNotification('Audio ready for extraction', 'success');
+        }, 1500);
+    } else {
+        showNotification('Invalid YouTube URL', 'error');
+    }
 }
 
 // Extract Audio
@@ -238,19 +344,21 @@ function extractAudio() {
     const format = document.getElementById('audioFormat').value;
     const bitrate = document.getElementById('audioBitrate').value;
     
-    showProgress('Extracting audio...');
+    if (!window.audioVideoId) {
+        showNotification('Please analyze a video first', 'error');
+        return;
+    }
     
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += 10;
-        updateProgress(progress);
-        
-        if (progress >= 100) {
-            clearInterval(interval);
-            hideProgress();
-            showNotification(`Audio extracted as ${format.toUpperCase()} (${bitrate}kbps)`, 'success');
-        }
-    }, 400);
+    showNotification('Opening audio extractor...', 'info');
+    
+    // Open audio extraction service
+    if (format === 'mp3') {
+        window.open(`https://www.yt1s.com/youtube-to-mp3?q=${window.audioVideoId}`, '_blank');
+    } else {
+        window.open(`https://www.y2mate.com/youtube-mp3/${window.audioVideoId}`, '_blank');
+    }
+    
+    showNotification(`Redirected to audio extraction service (${format.toUpperCase()} - ${bitrate}kbps)`, 'success');
 }
 
 // File Upload Handler
@@ -538,15 +646,6 @@ notificationStyles.textContent = `
 `;
 document.head.appendChild(notificationStyles);
 
-// Service Worker Registration (for PWA)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-            console.log('Service Worker registration failed:', err);
-        });
-    });
-}
-
 // Performance Optimization
 const lazyImages = document.querySelectorAll('img[data-src]');
 const imageObserver = new IntersectionObserver((entries, observer) => {
@@ -561,21 +660,3 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
 });
 
 lazyImages.forEach(img => imageObserver.observe(img));
-
-// Analytics (Example - Replace with your analytics code)
-function trackEvent(category, action, label) {
-    // Google Analytics or other tracking
-    console.log('Track Event:', { category, action, label });
-}
-
-// Export functions for testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        analyzeVideo,
-        downloadVideo,
-        analyzeBatch,
-        downloadBatch,
-        analyzeAudio,
-        extractAudio
-    };
-}
