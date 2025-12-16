@@ -1,0 +1,61 @@
+// Update the analyzeVideo function to use your backend
+async function analyzeVideo() {
+    const url = document.getElementById('singleUrl').value;
+    
+    if (!url) {
+        showNotification('Please enter a valid URL', 'error');
+        return;
+    }
+    
+    showProgress('Analyzing video...');
+    
+    try {
+        const response = await fetch(`http://localhost:3000/api/video-info?url=${encodeURIComponent(url)}`);
+        const data = await response.json();
+        
+        hideProgress();
+        document.getElementById('videoInfo').style.display = 'block';
+        
+        // Display real data
+        document.getElementById('videoThumbnail').src = data.thumbnail;
+        document.getElementById('videoTitle').textContent = data.title;
+        document.getElementById('videoDuration').textContent = `Duration: ${Math.floor(data.duration / 60)}:${data.duration % 60}`;
+        
+        showNotification('Video analyzed successfully!', 'success');
+    } catch (error) {
+        hideProgress();
+        showNotification('Error analyzing video', 'error');
+    }
+}
+
+// Update download function
+async function downloadVideo() {
+    const quality = document.querySelector('input[name="quality"]:checked')?.value || 'highest';
+    const url = document.getElementById('singleUrl').value;
+    
+    if (!url) {
+        showNotification('Please enter a URL first', 'error');
+        return;
+    }
+    
+    showProgress('Preparing download...');
+    
+    try {
+        // Create download link
+        const downloadUrl = `http://localhost:3000/api/download?url=${encodeURIComponent(url)}&quality=${quality}`;
+        
+        // Create temporary link and click it
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = 'video.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        hideProgress();
+        showNotification('Download started!', 'success');
+    } catch (error) {
+        hideProgress();
+        showNotification('Error downloading video', 'error');
+    }
+}

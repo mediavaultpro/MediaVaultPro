@@ -1,0 +1,66 @@
+// First install dependencies:
+// npm install express cors ytdl-core fluent-ffmpeg
+
+const express = require('express');
+const cors = require('cors');
+const ytdl = require('ytdl-core');
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public')); // Put your HTML files in 'public' folder
+
+// Get video info
+app.get('/api/video-info', async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!ytdl.validateURL(url)) {
+            return res.status(400).json({ error: 'Invalid URL' });
+        }
+        
+        const info = await ytdl.getInfo(url);
+        
+        res.json({
+            title: info.videoDetails.title,
+            thumbnail: info.videoDetails.thumbnails[info.videoDetails.thumbnails.length - 1].url,
+            duration: info.videoDetails.lengthSeconds,
+            formats: info.formats.map(format => ({
+                quality: format.qualityLabel,
+                format: format.container,
+                hasAudio: format.hasAudio,
+                hasVideo: format.hasVideo
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Download video
+app.get('/api/download', async (req, res) => {
+    try {
+        const { url, quality = 'highest' } = req.query;
+        
+        if (!ytdl.validateURL(url)) {
+            return res.status(400).json({ error: 'Invalid URL' });
+        }
+        
+        const info = await ytdl.getInfo(url);
+        const title = info.videoDetails.title.replace(/[^a-zA-Z0-9]/g, '_');
+        
+        res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
+        
+        ytdl(url, {
+            quality: quality,
+            filter: 'audioandvideo'
+        }).pipe(res);
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
+});
